@@ -1,377 +1,175 @@
-# 智慧校园导览系统 (Smart Campus Guide)
+# SWU Guide 智能校园导览系统
 
-## 一、核心技术栈
+> 面向校园游览场景的多端应用原型，整合地图、路线、内容管理、AI 问答与建筑识别。
 
-### 手机 APP 端 (Flutter)
-- **核心框架：** Flutter 3.44 + Dart 3.12
-- **状态管理：** Provider
-- **本地存储：** SQLite (sqflite)
-- **网络请求：** http
-- **最终产物：** Android APP、iOS APP（一套代码双端运行）
+![Flutter](https://img.shields.io/badge/Flutter-mobile-02569B?logo=flutter&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-backend-6DB33F?logo=springboot&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-AI%20service-009688?logo=fastapi&logoColor=white)
+![Vue](https://img.shields.io/badge/Vue%203-admin-4FC08D?logo=vuedotjs&logoColor=white)
 
-### 管理后台 Web 端 (Vue 3)
-- **核心框架：** Vue 3 + TypeScript + Vite
-- **UI 组件库：** Element Plus
-- **状态管理：** Pinia
-- **图表：** ECharts
-- **HTTP 客户端：** Axios
+## 项目概览
 
-### 核心业务后端 (Java)
-- **核心框架：** Spring Boot 3.1 + MyBatis-Plus 3.5.3
-- **运行环境：** JDK 17 + Maven
-- **安全：** JWT 认证
-- **缓存：** Redis
+校园游览常见的问题不是“缺少信息”，而是信息分散、路线与讲解割裂、现场识别成本高。SWU Guide 尝试把这些能力放进同一个移动端流程：
 
-### AI 智能微服务 (Python)
-- **核心框架：** FastAPI + Python 3.10+
-- **大模型生态：** LangChain（RAG 知识库）
-- **向量数据库：** Chroma
-- **语音合成：** 阿里云/讯飞 TTS
-- **视觉识别：** OpenAI Vision / 多模态模型
+- 在地图中查看校园地点与路线
+- 根据当前位置获取讲解内容
+- 通过自然语言咨询校园信息
+- 拍照识别建筑并继续追问
+- 由管理后台维护景点、讲解和 AI 语料
 
-### 数据存储与缓存
-- **主数据库：** MySQL 8.0
-- **高速缓存/LBS计算：** Redis（地理围栏高频判定）
-- **向量数据库：** Chroma（本地 AI 知识库）
+本仓库是 **4 人团队项目的公开 Fork**。我主要负责 AI 虚拟导游、视觉识别、AI 语料接口，以及功能分支的 Review 与合并。
 
----
+## 系统架构
 
-## 二、开发工具与平台
+~~~mermaid
+flowchart LR
+    App[Flutter App] --> Java[Spring Boot 业务后端]
+    Admin[Vue 3 管理后台] --> Java
+    App --> AI[FastAPI AI 微服务]
+    Java --> DB[(MySQL)]
+    Java --> Redis[(Redis)]
+    Java --> AI
+    AI --> LLM[OpenAI-compatible Model API]
+    AI --> Corpus[(校园语料)]
+~~~
 
-| 角色 | 工具 | 用途 |
+| 模块 | 技术 | 主要职责 |
 |---|---|---|
-| 前端双端开发 | VS Code / Android Studio | Flutter 手机端编写与调试 |
-| Web 后台开发 | VS Code | Vue 3 管理后台编写 |
-| Java 后端开发 | IntelliJ IDEA | Spring Boot 核心业务逻辑 |
-| Python AI 开发 | PyCharm / VS Code | FastAPI 人工智能微服务 |
-| 团队协作 | Git | 代码版本管理（GitHub） |
-| API 联调 | Apifox | 接口文档管理与前后端联调 |
-| 基础环境 | JDK 17 / Node.js v18+ / Flutter 3.44 | 各端运行环境 |
+| 移动端 | Flutter / Dart | 地图、景点、讲解、路线、AI 对话与识别页面 |
+| 管理后台 | Vue 3 / TypeScript | 景点、内容、路线、评论和语料管理 |
+| 业务后端 | Spring Boot / MyBatis-Plus | 用户、景点、路线、评论、打卡和语料接口 |
+| AI 微服务 | FastAPI / Python | 检索增强问答、建筑识别和场景问答 |
+| 数据层 | MySQL / Redis | 业务数据、缓存与位置相关计算 |
 
----
+## 我负责的部分
 
-## 三、团队分工（4人垂直业务域）
+### 1. 校园问答
 
-| 同学 | 业务域 | 负责功能模块 |
+当前实现将问答拆为 4 个步骤：
+
+~~~mermaid
+flowchart LR
+    A[加载校园语料] --> B[检索相关内容]
+    B --> C[组装上下文]
+    C --> D[调用大模型生成回答]
+    D --> E[返回回答与参考语料]
+~~~
+
+已提供 3 个 FastAPI 接口：
+
+| 方法 | 路径 | 说明 |
 |---|---|---|
-| **李卓尔** | 基础与LBS地图域 | 用户登录注册、地图展示、实时GPS定位、弱网离线缓存 |
-| **贾丝楠** | 业务内容与后台数据域 | 管理后台全页面（数据大屏/用户管理/景点CRUD/内容编辑）、Flutter景点详情页、Java文件上传 |
-| **周玮** | 核心AI讲解与语音域 | 智能语音讲解(地理围栏触发)、AI文案生成+TTS多语种、打卡徽章、智能路线规划(寻路算法+轨迹线) |
-| **陈昱霖** | 智能体与创新交互域 | AI虚拟导游(RAG多轮对话)、AR多模态识别(CV建筑识别+AR标签)、代码Review与合并 |
+| POST | /api/rag/load-corpus | 加载问答语料 |
+| GET | /api/rag/search | 检索相关语料 |
+| POST | /api/rag/chat | 返回回答与参考来源 |
 
----
+当前版本使用轻量关键词召回，便于验证端到端流程；Chroma 向量检索与更完整的语料评测列在后续计划中。
 
-## 四、项目目录结构（按功能模块组织）
+### 2. 建筑识别与场景问答
 
-```
+视觉模块接收 Base64 图片并调用视觉模型，提供：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | /api/vision/recognize | 返回建筑名称、介绍和位置信息 |
+| POST | /api/vision/scene-qa | 围绕图片继续提问 |
+
+移动端相机接入与识别结果卡片仍处于原型阶段，服务端接口已按独立路由与服务层拆分。
+
+### 3. 团队协作
+
+- 按 RAG、Vision 划分路由层与服务层，统一接口返回结构
+- 参与功能分支 Review、冲突处理与代码合并
+- 与 Flutter、Java 模块约定接口路径和数据结构
+- 维护团队分工、接口清单和本地启动说明
+
+## 当前实现状态
+
+| 能力 | 状态 | 说明 |
+|---|---|---|
+| Flutter 基础页面与导航 | 原型完成 | AI 对话和 AR 页面仍需接入真实接口 |
+| Vue 管理后台 | 基础页面已搭建 | 需要继续补充真实数据联调 |
+| Spring Boot 业务模块 | 基础接口已搭建 | 本地运行依赖 MySQL 与 Redis |
+| RAG 问答服务 | 基础链路可用 | 当前为关键词召回，向量检索待升级 |
+| 视觉模型服务 | 接口已实现 | 移动端相机与结果展示待联调 |
+| 自动化测试与部署 | 待完善 | 计划补充接口测试和容器化 |
+
+把实现状态写清楚，是为了区分“已经可以演示的链路”和“下一阶段规划”，避免 README 与代码不一致。
+
+## 目录结构
+
+~~~text
 SmartCampusGuide/
-├── README.md
+├── 1_CampusApp_Flutter/    # Flutter 移动端
+├── 2_AdminWeb_Vue/         # Vue 3 管理后台
+├── 3_Backend_Java/         # Spring Boot 业务后端
+├── 4_AIService_Python/     # FastAPI AI 微服务
 ├── 团队分工方案.md
-│
-├── 📱 1_CampusApp_Flutter/                         # 手机端
-│   ├── lib/
-│   │   ├── main.dart                               # 启动入口
-│   │   ├── core/
-│   │   │   ├── theme/app_theme.dart                # 全局主题（智慧蓝 #4A90E2）
-│   │   │   ├── router/app_router.dart              # 命名路由配置
-│   │   │   ├── network/network_client.dart         # HTTP 客户端（统一拦截 + Token）
-│   │   │   └── storage/local_storage.dart          # SQLite 离线缓存
-│   │   ├── features/
-│   │   │   ├── user/                               # 【李卓尔】用户认证
-│   │   │   │   ├── login_page.dart                 #   登录页
-│   │   │   │   ├── register_page.dart              #   注册页
-│   │   │   │   └── profile_page.dart               #   个人中心
-│   │   │   ├── map/                                # 【李卓尔】地图展示
-│   │   │   │   └── map_page.dart                   #   高德地图集成
-│   │   │   ├── location/                           # 【李卓尔】实时定位
-│   │   │   │   └── location_service.dart           #   GPS 定位 + 坐标上传
-│   │   │   ├── cache/                              # 【李卓尔】离线缓存
-│   │   │   │   └── cache_service.dart              #   景点数据预加载
-│   │   │   ├── spot/                               # 【贾丝楠】景点详情
-│   │   │   │   └── spot_detail_page.dart           #   图文/视频展示
-│   │   │   ├── guide/                              # 【周玮】智能讲解
-│   │   │   │   └── guide_page.dart                 #   播放/暂停 + 多语种切换
-│   │   │   ├── chat/                               # 【陈昱霖】AI 对话
-│   │   │   │   └── chat_page.dart                  #   聊天 UI + RAG 接口
-│   │   │   ├── ar/                                 # 【陈昱霖】AR 识别
-│   │   │   │   └── ar_page.dart                    #   相机预览 + CV 识别
-│   │   │   ├── route/                              # 【周玮】路线规划
-│   │   │   │   └── route_page.dart                 #   寻路算法 + 轨迹绘制
-│   │   │   └── social/                             # 【周玮】打卡徽章
-│   │   │       └── checkin_page.dart               #   徽章 GridView
-│   │   └── shared/widgets/
-│   │       └── glass_card.dart                     # 毛玻璃卡片组件
-│   ├── pubspec.yaml
-│   └── test/
-│
-├── 💻 2_AdminWeb_Vue/                              # Web后台
-│   ├── src/
-│   │   ├── main.ts                                 # 入口（Pinia + Router + ElementPlus）
-│   │   ├── App.vue                                 # 根组件
-│   │   ├── router/index.ts                         # 路由配置
-│   │   ├── api/request.ts                          # Axios 封装
-│   │   ├── layouts/MainLayout.vue                  # 主布局（侧边栏 + 顶栏）
-│   │   ├── styles/global.scss                      # 全局样式
-│   │   └── views/
-│   │       ├── dashboard/                          # 【贾丝楠】数据大屏
-│   │       │   └── Dashboard.vue                   #   统计卡片 + ECharts 趋势图
-│   │       ├── user/                               # 【李卓尔】用户管理
-│   │       │   └── UserList.vue                    #   用户列表 CRUD
-│   │       ├── spot/                               # 【贾丝楠】景点管理
-│   │       │   └── SpotManage.vue                  #   景点 CRUD 表格
-│   │       ├── content/                            # 【贾丝楠】内容编辑
-│   │       │   └── ContentEdit.vue                 #   讲解文案 + AI 生成
-│   │       ├── guide/                              # 【贾丝楠】讲解配置
-│   │       │   └── GuideConfig.vue                 #   TTS 引擎 + 触发配置
-│   │       ├── route/                              # 【贾丝楠】路线管理
-│   │       │   └── RouteConfig.vue                 #   路线 CRUD
-│   │       ├── comment/                            # 【贾丝楠】评论审核
-│   │       │   └── CommentReview.vue               #   评论通过/驳回
-│   │       └── ai/                                 # 【贾丝楠】语料库
-│   │           └── CorpusManage.vue                #   语料 CRUD + 搜索
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── ⚙️ 3_Backend_Java/                              # Java后端
-│   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/swu/guide/
-│       │   ├── GuideApplication.java               # 启动类
-│       │   ├── config/
-│       │   │   ├── CorsConfig.java                 # 跨域配置
-│       │   │   └── MyBatisPlusConfig.java          # 分页插件
-│       │   ├── common/
-│       │   │   ├── Result.java                     # 统一响应 {code, message, data}
-│       │   │   ├── BaseEntity.java                 # 实体基类
-│       │   │   └── exception/
-│       │   │       └── GlobalExceptionHandler.java
-│       │   └── modules/
-│       │       ├── user/                           # 【李卓尔】用户模块
-│       │       │   ├── entity/User.java
-│       │       │   ├── mapper/UserMapper.java
-│       │       │   ├── service/UserService.java
-│       │       │   ├── service/impl/UserServiceImpl.java
-│       │       │   └── controller/UserController.java   # /user/login, /user/register, /user/list
-│       │       ├── map/                            # 【李卓尔】地图定位模块
-│       │       │   ├── entity/MapLocation.java
-│       │       │   ├── mapper/MapLocationMapper.java
-│       │       │   ├── service/MapLocationService.java
-│       │       │   ├── service/impl/MapLocationServiceImpl.java
-│       │       │   └── controller/MapLocationController.java  # /map/location/upload, /map/location/nearby
-│       │       ├── spot/                           # 【贾丝楠】景点模块
-│       │       │   ├── entity/Spot.java
-│       │       │   ├── mapper/SpotMapper.java
-│       │       │   ├── service/SpotService.java
-│       │       │   ├── service/impl/SpotServiceImpl.java
-│       │       │   └── controller/SpotController.java       # CRUD: /spot
-│       │       ├── guide/                          # 【周玮】讲解内容模块
-│       │       │   ├── entity/GuideContent.java
-│       │       │   ├── mapper/GuideContentMapper.java
-│       │       │   ├── service/GuideContentService.java
-│       │       │   ├── service/impl/GuideContentServiceImpl.java
-│       │       │   └── controller/GuideContentController.java  # /guide/content
-│       │       ├── route/                          # 【周玮】路线规划模块
-│       │       │   ├── entity/RoutePlan.java
-│       │       │   ├── mapper/RoutePlanMapper.java
-│       │       │   ├── service/RoutePlanService.java
-│       │       │   ├── service/impl/RoutePlanServiceImpl.java
-│       │       │   └── controller/RoutePlanController.java   # /route/plan, /route/user
-│       │       ├── social/                         # 【周玮】社交互动模块
-│       │       │   ├── entity/Comment.java
-│       │       │   ├── entity/Checkin.java
-│       │       │   ├── mapper/CommentMapper.java
-│       │       │   ├── mapper/CheckinMapper.java
-│       │       │   ├── service/CommentService.java
-│       │       │   ├── service/CheckinService.java
-│       │       │   ├── service/impl/CommentServiceImpl.java
-│       │       │   ├── service/impl/CheckinServiceImpl.java
-│       │       │   ├── controller/CommentController.java      # /comment
-│       │       │   └── controller/CheckinController.java      # /checkin
-│       │       └── ai/                             # 【陈昱霖】AI 语料模块
-│       │           ├── entity/CorpusEntry.java
-│       │           ├── mapper/CorpusEntryMapper.java
-│       │           ├── service/CorpusEntryService.java
-│       │           ├── service/impl/CorpusEntryServiceImpl.java
-│       │           └── controller/CorpusController.java       # /ai/corpus
-│       └── resources/
-│           └── application.yml
-│
-└── 🧠 4_AIService_Python/                          # AI微服务
-    ├── main.py                                     # FastAPI 入口（CORS + 路由注册）
-    ├── config.py                                   # 环境变量配置
-    ├── requirements.txt                            # FastAPI + LangChain + Chroma + httpx
-    ├── core_utils/
-    │   ├── __init__.py
-    │   └── response.py                             # ApiResponse 统一响应
-    └── modules/
-        ├── __init__.py
-        ├── tts/                                    # 【周玮】TTS 语音模块
-        │   ├── __init__.py
-        │   ├── tts_router.py                       #   /api/tts/generate-script, /api/tts/synthesize
-        │   └── tts_service.py                      #   LLM文案生成 + TTS语音合成
-        ├── rag/                                    # 【陈昱霖】RAG 知识库模块
-        │   ├── __init__.py
-        │   ├── rag_router.py                       #   /api/rag/chat, /api/rag/load-corpus, /api/rag/search
-        │   └── rag_service.py                      #   向量检索 + 上下文对话
-        └── vision/                                 # 【陈昱霖】视觉识别模块
-            ├── __init__.py
-            ├── vision_router.py                    #   /api/vision/recognize, /api/vision/scene-qa
-            └── vision_service.py                   #   建筑识别 + 场景问答
-```
+└── README.md
+~~~
 
-> **说明：** 以上目录结构仅供参考，具体开发中如有未考虑到的细小功能，可自行在对应模块下建立文件夹。注释中标注的负责人可能存在疏漏，请以 QQ 群中的《团队分工方案》和《功能文档》为准。
+## 快速启动
 
----
+### 1. AI 微服务
 
-## 五、API 接口总览
+~~~bash
+cd 4_AIService_Python
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn main:app --reload --port 5000
+~~~
 
-| 模块 | 方法 | 路径 | 负责人 |
-|---|---|---|---|
-| 用户 | POST | `/user/login` | 李卓尔 |
-| 用户 | POST | `/user/register` | 李卓尔 |
-| 用户 | GET | `/user/list` | 李卓尔 |
-| 地图 | POST | `/map/location/upload` | 李卓尔 |
-| 地图 | GET | `/map/location/nearby` | 李卓尔 |
-| 景点 | GET | `/spot/list` | 贾丝楠 |
-| 景点 | GET | `/spot/{id}` | 贾丝楠 |
-| 景点 | POST | `/spot` | 贾丝楠 |
-| 景点 | DELETE | `/spot/{id}` | 贾丝楠 |
-| 讲解 | GET | `/guide/content/{spotId}` | 周玮 |
-| 讲解 | POST | `/guide/content` | 周玮 |
-| 路线 | POST | `/route/plan` | 周玮 |
-| 路线 | GET | `/route/user/{userId}` | 周玮 |
-| 评论 | POST | `/comment` | 周玮 |
-| 评论 | PUT | `/comment/review/{id}` | 周玮 |
-| 评论 | GET | `/comment/spot/{spotId}` | 周玮 |
-| 打卡 | POST | `/checkin` | 周玮 |
-| 打卡 | GET | `/checkin/badges/{userId}` | 周玮 |
-| 语料 | GET | `/ai/corpus/list` | 陈昱霖 |
-| 语料 | POST | `/ai/corpus` | 陈昱霖 |
-| 语料 | GET | `/ai/corpus/search` | 陈昱霖 |
-| TTS | POST | `/api/tts/generate-script` | 周玮 |
-| TTS | POST | `/api/tts/synthesize` | 周玮 |
-| RAG | POST | `/api/rag/chat` | 陈昱霖 |
-| RAG | POST | `/api/rag/load-corpus` | 陈昱霖 |
-| 视觉 | POST | `/api/vision/recognize` | 陈昱霖 |
-| 视觉 | POST | `/api/vision/scene-qa` | 陈昱霖 |
+在 .env 中填写模型服务配置。API Key 只应保存在本地 .env，不要提交到仓库。
 
----
+### 2. Java 业务后端
 
-## 六、Git 协作工作流
+先准备 MySQL 与 Redis，并通过环境变量配置数据库：
 
-### 仓库地址
-```
-git@github.com:zhouwei20030121-no1/SmartCampusGuide.git
-```
+~~~powershell
+$env:DB_USERNAME = "root"
+$env:DB_PASSWORD = "your_password"
+$env:AI_SERVICE_URL = "http://localhost:5000"
 
-### 分支策略
+cd 3_Backend_Java
+mvn spring-boot:run
+~~~
 
-| 分支 | 用途 |
-|---|---|
-| `main` | 主分支，始终保持稳定可发布状态 |
-| `dev` | 开发分支，所有功能分支合并到此 |
-| `feature/xxx` | 功能分支，每人每个功能新建一条 |
+默认端口为 8080。
 
-### 日常开发流程
+### 3. Vue 管理后台
 
-**第 1 步：切换到 dev 分支并拉取最新代码**
-```bash
-git checkout dev
-git pull origin dev
-```
-
-**第 2 步：从 dev 创建功能分支（命名规范：`feature/功能名`）**
-```bash
-git checkout -b feature/login        # 示例：登录功能
-git checkout -b feature/geofence     # 示例：地理围栏
-git checkout -b feature/route-plan   # 示例：路线规划
-```
-
-**第 3 步：在功能分支上写代码，然后提交**
-```bash
-git add .
-git commit -m "feat: 完成某某功能"
-```
-
-**第 4 步：推送功能分支到 GitHub**
-```bash
-git push origin feature/xxx
-```
-
-**第 5 步：去 GitHub 创建 Pull Request**
-- `base` 选 `dev`，`compare` 选你的 `feature/xxx` 分支
-- 通知 **陈昱霖** 进行代码 Review
-
-### 合并与冲突解决（陈昱霖负责）
-
-1. 在 GitHub 上 Review 代码变更
-2. 无冲突 → 点击 **Merge pull request** 合并到 `dev`
-3. 有冲突 → 本地解决后推送：
-   ```bash
-   git checkout dev
-   git pull origin dev
-   git merge feature/xxx
-   # 手动解决冲突
-   git add .
-   git commit -m "merge: 解决 feature/xxx 合并冲突"
-   git push origin dev
-   ```
-4. 合并完成后删除功能分支
-
-### 提交信息规范
-```
-feat: 新功能
-fix: 修复bug
-docs: 文档修改
-style: 代码格式（不影响功能）
-refactor: 重构
-test: 测试相关
-```
-
-### 注意事项
-- **永远不要直接往 `main` 分支推送代码**
-- **每个功能分支只做一个功能**
-- **每天开始工作前先 `git pull origin dev`**
-- **遇到冲突不要慌，叫陈昱霖一起来看**
-
----
-
-## 七、快速启动
-
-### 手机 APP 端（Flutter）
-```bash
-cd 1_CampusApp_Flutter
-
-# 国内网络环境需先设置镜像
-export PUB_HOSTED_URL=https://pub.flutter-io.cn
-export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
-
-# 安装依赖
-flutter pub get
-
-# 运行到已连接的设备/模拟器
-flutter run
-
-# 或编译 Android APK
-flutter build apk --debug
-```
-
-### Web 管理后台
-```bash
+~~~bash
 cd 2_AdminWeb_Vue
 npm install
 npm run dev
-```
+~~~
 
-### Java 业务后端
-```bash
-cd 3_Backend_Java
-mvn spring-boot:run
-```
+### 4. Flutter 移动端
 
-### Python AI 微服务
-```bash
-cd 4_AIService_Python
-pip install -r requirements.txt
-uvicorn main:app --reload --port 5000
-```
+~~~bash
+cd 1_CampusApp_Flutter
+flutter pub get
+flutter run
+~~~
+
+## 配置与安全
+
+- 模型 API Key、TTS 密钥和数据库密码均通过环境变量注入
+- .env、虚拟环境、Chroma 本地数据和构建产物已加入 .gitignore
+- 仓库提供 .env.example，仅保留字段说明，不包含真实凭据
+- application.yml 不再提供数据库密码默认值
+
+## 后续计划
+
+- 使用 Chroma / Embedding 升级语料召回，并建立问答评测集
+- 完成 Flutter AI 对话与相机识别的真实接口联调
+- 为 RAG、Vision 和业务接口补充自动化测试
+- 增加 Docker Compose，统一 MySQL、Redis、Java 与 Python 的启动流程
+- 补充可公开的演示截图与短视频
+
+## 说明
+
+这是一个教学与团队协作项目，当前以可运行原型和模块化设计为主。若用于真实校园服务，还需要补充权限控制、内容审核、模型评测、监控告警和隐私合规方案。
