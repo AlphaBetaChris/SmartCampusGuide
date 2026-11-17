@@ -100,20 +100,26 @@ flowchart LR
 
 ~~~text
 SmartCampusGuide/
-├── 1_CampusApp_Flutter/    # Flutter 移动端
-├── 2_AdminWeb_Vue/         # Vue 3 管理后台
-├── 3_Backend_Java/         # Spring Boot 业务后端
-├── 4_AIService_Python/     # FastAPI AI 微服务
-├── 团队分工方案.md
+├── apps/
+│   ├── mobile/             # Flutter 移动端
+│   └── admin/              # Vue 3 管理后台
+├── services/
+│   ├── backend/            # Spring Boot 业务后端
+│   └── ai/                 # FastAPI AI 微服务
+├── docs/
+│   ├── product/            # 需求与功能说明
+│   └── team/               # 团队分工与任务文档
 └── README.md
 ~~~
+
+详细文档索引见 [`docs/README.md`](docs/README.md)。
 
 ## 快速启动
 
 ### 1. AI 微服务
 
 ~~~bash
-cd 4_AIService_Python
+cd services/ai
 python -m venv .venv
 # Windows: .venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
@@ -133,7 +139,7 @@ $env:DB_USERNAME = "root"
 $env:DB_PASSWORD = "your_password"
 $env:AI_SERVICE_URL = "http://localhost:5000"
 
-cd 3_Backend_Java
+cd services/backend
 mvn spring-boot:run
 ~~~
 
@@ -142,7 +148,7 @@ mvn spring-boot:run
 ### 3. Vue 管理后台
 
 ~~~bash
-cd 2_AdminWeb_Vue
+cd apps/admin
 npm install
 npm run dev
 ~~~
@@ -150,7 +156,7 @@ npm run dev
 ### 4. Flutter 移动端
 
 ~~~bash
-cd 1_CampusApp_Flutter
+cd apps/mobile
 flutter pub get
 flutter run
 ~~~

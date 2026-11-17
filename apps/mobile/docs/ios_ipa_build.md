@@ -12,7 +12,7 @@
 
 ## 准备依赖
 
-在 `1_CampusApp_Flutter` 目录运行：
+在 `apps/mobile` 目录运行：
 
 ```sh
 flutter pub get

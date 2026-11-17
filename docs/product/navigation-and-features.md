@@ -6,7 +6,7 @@
 
 ## 一、底部导航栏（4个Tab）
 
-底部导航栏位于 `1_CampusApp_Flutter/lib/features/home/home_page.dart`，由 `_HomePageState._currentIndex` 控制切换。
+底部导航栏位于 `apps/mobile/lib/features/home/home_page.dart`，由 `_HomePageState._currentIndex` 控制切换。
 
 | Tab | 名称 | 图标 | 对应功能模块 | 负责人 |
 |---|---|---|---|---|
