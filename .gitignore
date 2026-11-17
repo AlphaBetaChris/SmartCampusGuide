@@ -10,19 +10,31 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# UniApp
+# UniApp / Flutter
 unpackage/
 .hbuilderx/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
 
 # Build output
 dist/
 build/
 target/
 
-# Environment
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+4_AIService_Python/chroma_db/
+
+# Environment and local overrides
 .env
 .env.local
 .env.*.local
+3_Backend_Java/src/main/resources/application-local.yml
 
 # Logs
 *.log
